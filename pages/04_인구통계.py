@@ -32,16 +32,23 @@ set_korean_font()
 st.title("🏙️ 서울시 자치구별 인구통계")
 st.markdown("`population.csv` 데이터를 기반으로 연령대별 인구수 추이를 확인합니다.")
 
-# 데이터 로드 및 전처리 함수
+# 데이터 로드 및 전처리 함수 (인코딩 에러 완벽 해결 버전)
 @st.cache_data
 def load_data():
-    df = pd.read_csv("population.csv", encoding="utf-8")
+    # 일반적인 공공데이터 CSV 파일의 인코딩 형식(CP949, EUC-KR)을 순차적으로 시도합니다.
+    try:
+        df = pd.read_csv("population.csv", encoding="cp949")
+    except UnicodeDecodeError:
+        try:
+            df = pd.read_csv("population.csv", encoding="euc-kr")
+        except UnicodeDecodeError:
+            df = pd.read_csv("population.csv", encoding="utf-8")
     
     # 숫자 데이터 내 콤마(,) 제거 후 정수형(int) 변환
     for col in df.columns[1:]:
         df[col] = df[col].astype(str).str.replace(",", "").astype(int)
         
-    # 행정구역 코드 부분을 제외한 순수 구 이름만 추출
+    # 행정구역 코드 부분을 제외한 순수 구 이름만 추출 (예: "서울특별시 종로구 (1111000000)" -> "서울특별시 종로구")
     df['행정구역_정제'] = df['행정구역'].apply(lambda x: x.split("(")[0].strip())
     df['행정구역_정제'] = df['행정구역_정제'].replace("서울특별시", "서울특별시 전체")
     
@@ -58,7 +65,7 @@ try:
     row_data = df[df['행정구역_정제'] == selected_region].iloc[0]
     
     # 그래프를 그리기 위한 데이터 변환 (가로축: 연령대, 세로축: 인구수)
-    age_groups = df.columns[1:-1].tolist()
+    age_groups = df.columns[1:-1].tolist()  # '행정구역'과 '행정구역_정제' 칼럼 제외
     populations = [row_data[age] for age in age_groups]
     
     plot_df = pd.DataFrame({
@@ -69,26 +76,30 @@ try:
     # 꺾은선 그래프 시각화 설정
     fig, ax = plt.subplots(figsize=(10, 6))
     
-    # 배경색 요구사항: 연한 보라색 배경 적용
+    # 요구사항 4: 그래프 바탕색을 연한 보라색으로 설정
     ax.set_facecolor('#F0ECFC')       # 그래프 플롯 내부 연보라색
     fig.patch.set_facecolor('#F8F6FF') # 그래프 바깥 여백 연보라색
     
-    # 그래프 선 요구사항: 빨간색 꺾은선 그래프
+    # 요구사항 2, 4: 가로축은 연령대, 세로축은 인구수로 하고 그래프 색상은 빨간색으로 설정
     ax.plot(plot_df['연령대'], plot_df['인구수'], marker='o', color='#FF0000', linewidth=2.5, markersize=6)
     
-    # 그래프 제목 요구사항: "서울시의 인구통계"
+    # 요구사항 3: 그래프 제목은 "서울시의 인구통계"로 설정 (+ 자치구명 표시)
     ax.set_title(f"서울시의 인구통계 - {selected_region}", fontsize=16, fontweight='bold', pad=15)
     ax.set_xlabel("연령대", fontsize=12, labelpad=10)
     ax.set_ylabel("인구수 (명)", fontsize=12, labelpad=10)
     
-    # 가독성을 높이기 위한 설정들
+    # 가독성을 높이기 위한 그리드 및 축 서식 설정
     ax.grid(True, linestyle='--', alpha=0.4, color='#9E9E9E')
+    
+    # 세로축 숫자에 천 단위 콤마(,) 표시 적용
     import matplotlib.ticker as ticker
     ax.get_yaxis().set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',')))
+    
+    # X축 글자(연령대) 겹침 방지를 위해 45도 회전
     plt.xticks(rotation=45)
     plt.tight_layout()
     
-    # 스트림릿 웹페이지에 그래프 표출
+    # 스트림릿 웹페이지에 그래프 출력
     st.pyplot(fig)
     
     # 상세 수치 표 제공
