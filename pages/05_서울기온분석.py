@@ -5,12 +5,12 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 import os
 
-# 1. 데이터 로드 및 전처리 함수
+# 데이터 로드 및 전처리 함수
 @st.cache_data
 def load_data():
-    # 현재 파일(pages/...)의 위치를 기준으로 한 단계 상위 폴더의 seoul.csv 절대 경로 계산
-    current_dir = os.path.dirname(os.path.abspath(__file__)) # pages 폴더 위치
-    parent_dir = os.path.dirname(current_dir)               # 최상위 상위 폴더 위치
+    # 현재 파일(pages/...)의 위치를 기준으로 상위 폴더의 seoul.csv 절대 경로 계산
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
     csv_path = os.path.join(parent_dir, 'seoul.csv')
     
     # 한글 인코딩(cp949)으로 데이터 읽기
@@ -49,7 +49,7 @@ try:
     available_days = sorted(df[df['월'] == selected_month]['일'].unique())
     selected_day = st.sidebar.selectbox("일(Day)을 선택하세요", available_days, index=14) # 기본값 15일
     
-    # 미래 예측 연도 선택 (마지막 데이터 연도 다음부터 2050년까지)
+    # 미래 예측 연도 선택 (2019년부터 2050년까지)
     predict_year = st.sidebar.slider(
         f"예측할 미래 연도를 선택하세요 ({max_year_in_data}년 이후)", 
         min_value=max_year_in_data + 1, 
@@ -66,7 +66,6 @@ try:
         st.subheader(f"📊 {selected_month}월 {selected_day}일 기온 통계 및 미래 예측")
         
         # --- [머신러닝 기반 기온 예측 로직] ---
-        # 독립 변수 X (연도), 종속 변수 y (최고기온, 최저기온)
         X = filtered_df[['연도']].values
         y_max = filtered_df['최고기온(℃)'].values
         y_min = filtered_df['최저기온(℃)'].values
@@ -83,8 +82,8 @@ try:
         
         # --- 대시보드 요약 카드 정보 출력 ---
         col1, col2, col3 = st.columns(3)
-        col1.metric(f"{predict_year}년 최고기온 예측", f"{pred_max:.1f} ℃", f"추세선 기준")
-        col2.metric(f"{predict_year}년 최저기온 예측", f"{pred_min:.1f} ℃", f"추세선 기준")
+        col1.metric(f"{predict_year}년 최고기온 예측", f"{pred_max:.1f} ℃", "추세선 기준")
+        col2.metric(f"{predict_year}년 최저기온 예측", f"{pred_min:.1f} ℃", "추세선 기준")
         col3.metric("과거 데이터 수", f"{len(filtered_df)} 개년")
         
         # --- [Plotly를 이용한 상호작용형 그래프 시각화] ---
@@ -92,16 +91,77 @@ try:
         
         # 1. 과거 최고기온 데이터 꺾은선 (핫핑크)
         fig.add_trace(go.Scatter(
-            x=filtered_df['연度'] if '연度' in filtered_df else filtered_df['연도'],
+            x=filtered_df['연도'],
             y=filtered_df['최고기온(℃)'],
             mode='lines+markers',
             name='최고기온 (과거)',
             line=dict(color='hotpink', width=2),
             marker=dict(size=4),
-            hovertemplate='<b>%{x}년 최고기온</b><br>기온: %{y}℃<extra></extra>' # 마우스 오버 툴팁 포맷
+            hovertemplate='<b>%{x}년 최고기온</b><br>기온: %{y}℃<extra></extra>'
         ))
         
-        # 2. 과거 최저기온 데이터 꺾은선 (연한 파란색 - lightblue)
+        # 2. 과거 최저기온 데이터 꺾은선 (연한 파란색)
         fig.add_trace(go.Scatter(
-            x=filtered_df['연度'] if '연度' in filtered_df else filtered_df['연도'],
-            y=filtered_df
+            x=filtered_df['연도'],
+            y=filtered_df['최저기온(℃)'],
+            mode='lines+markers',
+            name='최저기온 (과거)',
+            line=dict(color='lightblue', width=2),
+            marker=dict(size=4),
+            hovertemplate='<b>%{x}년 최저기온</b><br>기온: %{y}℃<extra></extra>'
+        ))
+        
+        # 3. 미래 최고기온 예측 점 (진한 핑크)
+        fig.add_trace(go.Scatter(
+            x=[predict_year],
+            y=[pred_max],
+            mode='markers',
+            name=f'{predict_year}년 최고 예측',
+            marker=dict(color='deeppink', size=10, symbol='diamond'),
+            hovertemplate=f'<b>{predict_year}년 최고기온 예측</b><br>기온: {pred_max:.1f}℃<extra></extra>'
+        ))
+        
+        # 4. 미래 최저기온 예측 점 (진한 하늘색)
+        fig.add_trace(go.Scatter(
+            x=[predict_year],
+            y=[pred_min],
+            mode='markers',
+            name=f'{predict_year}년 최저 예측',
+            marker=dict(color='dodgerblue', size=10, symbol='diamond'),
+            hovertemplate=f'<b>{predict_year}년 최저기온 예측</b><br>기온: {pred_min:.1f}℃<extra></extra>'
+        ))
+        
+        # 그래프 레이아웃 설정
+        fig.update_layout(
+            title=dict(
+                text=f"날짜별 기온 분석 및 {predict_year}년 예측 ({selected_month}월 {selected_day}일)",
+                x=0.5,
+                xanchor='center',
+                font=dict(size=16, weight='bold')
+            ),
+            xaxis_title="연도",
+            yaxis_title="온도",
+            hovermode="x unified",  # 마우스 올렸을 때 툴팁 통합 표시
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=40, r=40, t=80, b=40),
+            plot_bgcolor='white'
+        )
+        
+        # 축 그리드 설정
+        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
+        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGrey')
+        
+        # 스트림릿 웹 화면에 Plotly 그래프 출력
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # 참고 텍스트 제공
+        st.info(f"💡 **참고 (과거 기록):** 이 날짜의 역대 최고 기온은 {filtered_df['최고기온(℃)'].max()}℃({filtered_df.loc[filtered_df['최고기온(℃)'].idxmax(), '연도']}년) 이었으며, "
+                f"역대 최저 기온은 {filtered_df['최저기온(℃)'].min()}℃({filtered_df.loc[filtered_df['최저기온(℃)'].idxmin(), '연도']}년) 이었습니다.")
+
+        # 선택 사항: 상세 표 데이터 확인
+        if st.checkbox("전체 데이터 테이블 보기"):
+            st.dataframe(filtered_df[['연도', '평균기온(℃)', '최저기온(℃)', '최고기온(℃)']].reset_index(drop=True))
+
+except Exception as e:
+    st.error(f"오류가 발생했습니다: {e}")
+    st.info("seoul.csv 파일의 위치와 파일 인코딩(cp949)을 확인해 주세요.")
