@@ -9,13 +9,13 @@ plt.rcParams['axes.unicode_minus'] = False
 # 1. 데이터 로드 및 전처리 함수
 @st.cache_data
 def load_data():
-    # [경로 수정] 현재 파일(pages/...)의 위치를 기준으로 한 단계 상위 폴더의 seoul.csv를 절대 경로로 계산합니다.
+    # 현재 파일(pages/...)의 위치를 기준으로 한 단계 상위 폴더의 seoul.csv 절대 경로 계산
     current_dir = os.path.dirname(os.path.abspath(__file__)) # pages 폴더 위치
     parent_dir = os.path.dirname(current_dir)               # 최상위 상위 폴더 위치
     csv_path = os.path.join(parent_dir, 'seoul.csv')
     
-    # 파일 읽기
-    df = pd.read_csv(csv_path)
+    # [★수정] 한글 인코딩 오류 해결을 위해 encoding='cp949'를 지정합니다.
+    df = pd.read_csv(csv_path, encoding='cp949')
     
     # 열 이름 공백 제거
     df.columns = df.columns.str.strip()
@@ -88,4 +88,4 @@ try:
 
 except Exception as e:
     st.error(f"오류가 발생했습니다: {e}")
-    st.info("seoul.csv 파일이 올바른 상위 폴더 위치에 있는지 확인해 주세요.")
+    st.info("seoul.csv 파일의 위치와 파일 인코딩(cp949)을 확인해 주세요.")
