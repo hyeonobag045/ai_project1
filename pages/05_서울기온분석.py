@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 # 한글 폰트 깨짐 및 마이너스 기호 깨짐 방지 설정
 plt.rcParams['axes.unicode_minus'] = False
@@ -8,8 +9,13 @@ plt.rcParams['axes.unicode_minus'] = False
 # 1. 데이터 로드 및 전처리 함수
 @st.cache_data
 def load_data():
-    # 파일이 상위 폴더에 있으므로 경로를 '../seoul.csv'로 수정합니다.
-    df = pd.read_csv('../seoul.csv')
+    # [경로 수정] 현재 파일(pages/...)의 위치를 기준으로 한 단계 상위 폴더의 seoul.csv를 절대 경로로 계산합니다.
+    current_dir = os.path.dirname(os.path.abspath(__file__)) # pages 폴더 위치
+    parent_dir = os.path.dirname(current_dir)               # 최상위 상위 폴더 위치
+    csv_path = os.path.join(parent_dir, 'seoul.csv')
+    
+    # 파일 읽기
+    df = pd.read_csv(csv_path)
     
     # 열 이름 공백 제거
     df.columns = df.columns.str.strip()
@@ -61,10 +67,10 @@ try:
         fig, ax = plt.subplots(figsize=(10, 5))
         
         # 최고기온: 핫핑크(hotpink), 최저기온: 연한 파란색(lightblue)
-        ax.plot(filtered_df['연度'] if '연度' in filtered_df else filtered_df['연도'], filtered_df['최고기온(℃)'], color='hotpink', marker='o', markersize=3, label='최고기온')
-        ax.plot(filtered_df['연度'] if '연度' in filtered_df else filtered_df['연도'], filtered_df['최저기온(℃)'], color='lightblue', marker='o', markersize=3, label='최저기온')
+        ax.plot(filtered_df['연도'], filtered_df['최고기온(℃)'], color='hotpink', marker='o', markersize=3, label='최고기온')
+        ax.plot(filtered_df['연도'], filtered_df['최저기온(℃)'], color='lightblue', marker='o', markersize=3, label='최저기온')
         
-        # 그래프 제목 및 축 설정 (요청 사항 반영)
+        # 그래프 제목 및 축 설정
         ax.set_title(f"날짜별 기온 분석 ({selected_month}월 {selected_day}일)", fontsize=14, fontweight='bold', pad=15)
         ax.set_xlabel("연도", fontsize=11, labelpad=10)
         ax.set_ylabel("온도", fontsize=11, labelpad=10)
@@ -82,4 +88,4 @@ try:
 
 except Exception as e:
     st.error(f"오류가 발생했습니다: {e}")
-    st.info("seoul.csv 파일이 app.py의 상위 폴더(..)에 위치해 있는지 확인해 주세요.")
+    st.info("seoul.csv 파일이 올바른 상위 폴더 위치에 있는지 확인해 주세요.")
