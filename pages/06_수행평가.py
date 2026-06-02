@@ -3,30 +3,52 @@ import csv
 
 # 1. 페이지 기본 설정 및 예쁜 타이틀 ✨
 st.set_page_config(page_title="배드민턴 랭킹 마스터 🏸", page_icon="🏸", layout="centered")
-st.title("🏸 배드민턴 남시 단식 세계 랭킹 탐색기")
+st.title("🏸 배드민턴 남자 단식 세계 랭킹 탐색기")
 st.write("세계적인 배드민턴 선수들의 정보를 한눈에 알아보자구! 😎")
 
-# 2. 데이터 불러오기 함수 (기본 csv 라이브러리 사용!)
+# 2. 데이터 불러오기 함수 (인코딩 무적 패치 적용! 🛠️)
 @st.cache_data
 def load_data():
     players_by_country = {}
     
-    # 캐시 문제나 인코딩 문제를 방지하기 위해 utf-8 또는 cp949 처리
     try:
-        with open("men_single.csv", mode="r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
+        # 'utf-8-sig'로 읽으면 맨 앞의 눈에 안 보이는 유령 글자(\ufeff)를 자동으로 지워줘! 😎
+        with open("men_single.csv", mode="r", encoding="utf-8-sig") as f:
+            # 혹시 구분자가 쉼표가 아닐 수도 있으니, 힌트를 얻어서 읽어오기
+            sample = f.read(2048)
+            f.seek(0)
+            dialect = csv.Sniffer().sniff(sample) if sample else None
+            
+            if dialect:
+                reader = csv.DictReader(f, dialect=dialect)
+            else:
+                reader = csv.DictReader(f)
+                
             for row in reader:
-                country = row["country"].strip()
+                # 공백 때문에 에러 날 수 있으니 key와 value의 양쪽 공백을 다 다듬어줄게!
+                clean_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
+                
+                # 안전하게 데이터 가져오기 (혹시나 비어있으면 기본값 처리!)
+                country = clean_row.get("country", "Unknown")
+                ranking = clean_row.get("ranking", "0")
+                name = clean_row.get("player_name", clean_row.get("jorsey_name", "Unknown"))
+                tournaments = clean_row.get("tournaments", "0")
+                points = clean_row.get("points", "0")
+                
                 if country not in players_by_country:
                     players_by_country[country] = []
+                    
                 players_by_country[country].append({
-                    "ranking": row["ranking"],
-                    "name": row["player_name"],
-                    "tournaments": row["tournaments"],
-                    "points": row["points"]
+                    "ranking": ranking,
+                    "name": name,
+                    "tournaments": tournaments,
+                    "points": points
                 })
     except FileNotFoundError:
-        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 파일 이름을 다시 확인해줘.")
+        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 대소문자나 파일 위치를 다시 확인해줘.")
+        return {}
+    except Exception as e:
+        st.error(f"🚨 오 마이 갓! 데이터를 읽다가 다른 에러가 났어: {e}")
         return {}
     
     return players_by_country
@@ -44,7 +66,7 @@ if data:
     st.subheader(f"🌍 {selected_country}의 전사들")
     country_players = data[selected_country]
     
-    # 선택 메뉴용 이름 리스트 만들기 (랭킹을 같이 보여주면 더 알아보기 쉬우니까!)
+    # 선택 메뉴용 이름 리스트 만들기
     player_options = [f"[{p['ranking']}위] {p['name']}" for p in country_players]
     selected_player_opt = st.selectbox("👤 능력을 분석할 선수를 골라봐!", player_options)
     
@@ -52,23 +74,32 @@ if data:
     selected_index = player_options.index(selected_player_opt)
     player = country_players[selected_index]
     
-    # 5. 선수 정보 및 역량 분석 (이모지 폭탄! 💣✨)
+    # 5. 선수 정보 및 역량 분석 (이모지 뿜뿜! 💥)
     st.markdown(f"### ⚡ **{player['name']}** 선수의 시크릿 프로필")
     
-    # 기본 스펙 깔끔하게 보여주기
+    # 세련된 메트릭 레이아웃
     col1, col2, col3 = st.columns(3)
     col1.metric(label="현재 세계 랭킹 🥇", value=f"{player['ranking']} 위")
-    col2.metric(label="총 랭킹 포인트 🔥", value=f"{int(player['points']):,}")
+    
+    # 숫자로 바꿀 때 에러 안 나게 안전장치 추가!
+    try:
+        pts = f"{int(player['points']):,}"
+    except ValueError:
+        pts = player['points']
+        
+    col2.metric(label="총 랭킹 포인트 🔥", value=pts)
     col3.metric(label="대회 출전 횟수 🏸", value=f"{player['tournaments']} 회")
     
     st.write("") # 한 줄 띄우기
     
-    # 랭킹에 따른 역량 자동 한 줄 평 (청소년 맞춤형 멘트!)
-    rank_num = int(player["ranking"])
-    points_num = int(player["points"])
-    
     st.markdown("#### 🧠 **AI가 분석한 이 선수의 스펙 능력치**")
     
+    # 랭킹 숫자에 따른 맞춤형 멘트 쏴주기!
+    try:
+        rank_num = int(player["ranking"])
+    except ValueError:
+        rank_num = 9999
+        
     if rank_num == 1:
         st.success("👑 **[신계 영역]** 말해 뭐해? 현재 세계 배드민턴계를 씹어먹고 있는 절대 강자야! 적은 대회만 뛰고도 압도적인 포인트로 1위를 지키는 괴물 같은 효율성을 보여주고 있어. ㄷㄷ")
     elif rank_num <= 10:
