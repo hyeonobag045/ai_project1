@@ -6,32 +6,30 @@ st.set_page_config(page_title="배드민턴 랭킹 마스터 🏸", page_icon="�
 st.title("🏸 배드민턴 남자 단식 세계 랭킹 탐색기")
 st.write("세계적인 배드민턴 선수들의 정보를 한눈에 알아보자구! 😎")
 
-# 2. 데이터 불러오기 함수 (인코딩 패치 + 자동 순위 정렬! 📈)
+# 2. 데이터 불러오기 함수 (안전 제일 패치! 🛡️)
 @st.cache_data
 def load_data():
     players_by_country = {}
     
     try:
-        # 'utf-8-sig'로 유령 글자 제거 🛡️
         with open("men_single.csv", mode="r", encoding="utf-8-sig") as f:
-            sample = f.read(2048)
-            f.seek(0)
-            dialect = csv.Sniffer().sniff(sample) if sample else None
+            # 안전하게 데이터를 한 줄씩 읽기 위한 내장 DictReader 사용
+            reader = csv.DictReader(f)
             
-            if dialect:
-                reader = csv.DictReader(f, dialect=dialect)
-            else:
-                reader = csv.DictReader(f)
-                
             for row in reader:
+                # key나 value에 공백이 있으면 싹 지워주기
                 clean_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
                 
-                country = clean_row.get("country", "Unknown")
-                ranking = clean_row.get("ranking", "0")
-                name = clean_row.get("player_name", clean_row.get("jorsey_name", "Unknown"))
-                tournaments = clean_row.get("tournaments", "0")
-                points = clean_row.get("points", "0")
+                # 열 이름이 정확하지 않을 때를 대비한 꼼꼼한 예외 처리!
+                country = clean_row.get("country", "Unknown").strip()
+                ranking = clean_row.get("ranking", "9999").strip()
+                name = clean_row.get("player_name", clean_row.get("jorsey_name", "Unknown")).strip()
+                tournaments = clean_row.get("tournaments", "0").strip()
+                points = clean_row.get("points", "0").strip()
                 
+                if not country:
+                    country = "Unknown"
+                    
                 if country not in players_by_country:
                     players_by_country[country] = []
                     
@@ -42,23 +40,24 @@ def load_data():
                     "points": points
                 })
                 
-        # ⭐ 핵심 피드백 반영: 각 나라별 선수들을 랭킹 숫자가 작은 순(1위부터)으로 정렬하기!
+        # 각 나라별 선수들을 랭킹 숫자가 작은 순(1위부터)으로 정렬하기!
         for country in players_by_country:
             players_by_country[country].sort(key=lambda x: int(x["ranking"]) if x["ranking"].isdigit() else 9999)
             
     except FileNotFoundError:
-        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 대소문자나 파일 위치를 다시 확인해줘.")
+        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 파일이 `app.py`와 같은 폴더(혹은 깃허브 저장소 루트)에 있는지 확인해줘.")
         return {}
     except Exception as e:
-        st.error(f"🚨 오 마이 갓! 데이터를 읽다가 다른 에러가 났어: {e}")
-        return {}
+        # 에러가 나더라도 프로그램이 완전히 죽지 않도록 예외 처리
+        st.warning(f"⚠️ 데이터를 읽는 중에 사소한 이슈가 있었어, 하지만 계속 진행해볼게! (에러 내용: {e})")
     
     return players_by_country
 
+# 데이터 로드 실행!
 data = load_data()
 
+# 3. 데이터가 정상적으로 있을 때만 화면 구성 🌍
 if data:
-    # 3. 나라 선택 셀렉트박스 🌍
     countries = sorted(list(data.keys()))
     selected_country = st.selectbox("👉 궁금한 나라를 선택해봐!", countries)
     
@@ -68,5 +67,27 @@ if data:
     st.subheader(f"🌍 {selected_country}의 전사들")
     country_players = data[selected_country]
     
-    # 이제 1위부터 순서대로 깔끔하게 리스트가 만들어져! 👍
-    player_options
+    # 1위부터 정렬된 리스트 안전하게 생성 📋
+    player_options = [f"[{p['ranking']}위] {p['name']}" for p in country_players]
+    
+    # 변수가 생성된 후에만 셀렉트박스와 하위 레이아웃이 돌아가게 안전장치 작동!
+    if player_options:
+        selected_player_opt = st.selectbox("👤 능력을 분석할 선수를 골라봐!", player_options)
+        
+        # 선택된 선수 데이터 매칭하기
+        selected_index = player_options.index(selected_player_opt)
+        player = country_players[selected_index]
+        
+        # 5. 선수 정보 및 역량 분석 (이모지 폭탄! 💣✨)
+        st.markdown(f"### ⚡ **{player['name']}** 선수의 시크릿 프로필")
+        
+        # 세련된 메트릭 레이아웃
+        col1, col2, col3 = st.columns(3)
+        col1.metric(label="현재 세계 랭킹 🥇", value=f"{player['ranking']} 위")
+        
+        try:
+            pts = f"{int(player['points']):,}"
+        except ValueError:
+            pts = player['points']
+            
+        col2.metric(label="총 랭킹 포인트 🔥", value=pts)
