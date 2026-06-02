@@ -6,21 +6,19 @@ st.set_page_config(page_title="배드민턴 랭킹 마스터 🏸", page_icon="�
 st.title("🏸 배드민턴 남자 단식 세계 랭킹 탐색기")
 st.write("세계적인 배드민턴 선수들의 정보를 한눈에 알아보자구! 😎")
 
-# 2. 데이터 불러오기 함수 (안전 제일 패치! 🛡️)
+# 2. 데이터 불러오기 함수 (완벽 정렬 무적 패치! 📈)
 @st.cache_data
 def load_data():
     players_by_country = {}
     
     try:
         with open("men_single.csv", mode="r", encoding="utf-8-sig") as f:
-            # 안전하게 데이터를 한 줄씩 읽기 위한 내장 DictReader 사용
             reader = csv.DictReader(f)
             
             for row in reader:
                 # key나 value에 공백이 있으면 싹 지워주기
                 clean_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
                 
-                # 열 이름이 정확하지 않을 때를 대비한 꼼꼼한 예외 처리!
                 country = clean_row.get("country", "Unknown").strip()
                 ranking = clean_row.get("ranking", "9999").strip()
                 name = clean_row.get("player_name", clean_row.get("jorsey_name", "Unknown")).strip()
@@ -40,16 +38,20 @@ def load_data():
                     "points": points
                 })
                 
-        # 각 나라별 선수들을 랭킹 숫자가 작은 순(1위부터)으로 정렬하기!
+        # ⭐ 핵심 피드백 반영: 문자열이 아닌 '진짜 숫자'로 비교해서 1위부터 정렬하기!
         for country in players_by_country:
-            players_by_country[country].sort(key=lambda x: int(x["ranking"]) if x["ranking"].isdigit() else 9999)
+            players_by_country[country].sort(
+                key=lambda x: (
+                    int(x["ranking"]) if x["ranking"].isdigit() else 9999,      # 1순위: 랭킹 오름차순 (1위가 맨 위로!)
+                    -int(x["points"]) if x["points"].isdigit() else 0          # 2순위: 혹시 랭킹 같으면 포인트 내림차순
+                )
+            )
             
     except FileNotFoundError:
-        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 파일이 `app.py`와 같은 폴더(혹은 깃허브 저장소 루트)에 있는지 확인해줘.")
+        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 깃허브 저장소 루트에 잘 있는지 확인해줘.")
         return {}
     except Exception as e:
-        # 에러가 나더라도 프로그램이 완전히 죽지 않도록 예외 처리
-        st.warning(f"⚠️ 데이터를 읽는 중에 사소한 이슈가 있었어, 하지만 계속 진행해볼게! (에러 내용: {e})")
+        st.warning(f"⚠️ 데이터를 읽는 중에 이슈가 있었어! (에러 내용: {e})")
     
     return players_by_country
 
@@ -67,10 +69,9 @@ if data:
     st.subheader(f"🌍 {selected_country}의 전사들")
     country_players = data[selected_country]
     
-    # 1위부터 정렬된 리스트 안전하게 생성 📋
+    # 이제 진짜 1위부터 순서대로 깔끔하게 정렬된 리스트가 나와! 👍
     player_options = [f"[{p['ranking']}위] {p['name']}" for p in country_players]
     
-    # 변수가 생성된 후에만 셀렉트박스와 하위 레이아웃이 돌아가게 안전장치 작동!
     if player_options:
         selected_player_opt = st.selectbox("👤 능력을 분석할 선수를 골라봐!", player_options)
         
@@ -91,3 +92,28 @@ if data:
             pts = player['points']
             
         col2.metric(label="총 랭킹 포인트 🔥", value=pts)
+        col3.metric(label="대회 출전 횟수 🏸", value=f"{player['tournaments']} 회")
+        
+        st.write("") # 한 줄 띄우기
+        
+        st.markdown("#### 🧠 **AI가 분석한 이 선수의 스펙 능력치**")
+        
+        try:
+            rank_num = int(player["ranking"])
+        except ValueError:
+            rank_num = 9999
+            
+        if rank_num == 1:
+            st.success("👑 **[신계 영역]** 말해 뭐해? 현재 세계 배드민턴계를 씹어먹고 있는 절대 강자야! 적은 대회만 뛰고도 압도적인 포인트로 1위를 지키는 괴물 같은 효율성을 보여주고 있어. ㄷㄷ")
+        elif rank_num <= 10:
+            st.info("💎 **[월드클래스]** 전 세계 탑 10에 드는 초엘리트 선수! 코트 위에서 이 선수를 만나면 숨도 쉬기 힘들 걸? 대회마다 우승 후보로 꼽히는 엄청난 실력자야! 🚀")
+        elif rank_num <= 50:
+            st.warning("🔥 **[실력파 강자]** 상위 랭커들을 언제든지 꺾을 수 있는 강력한 다크호스! 끈질긴 수비력과 날카로운 공격력을 모두 갖춘 무서운 형이야. 💪")
+        elif rank_num <= 200:
+            st.write("🏃 **[라이징 스타 / 베테랑]** 세계적인 무대에서 맹활약하며 끊임없이 성장 중인 선수야. 경험이 풍부하거나 잠재력이 엄청나서 앞으로의 성장이 진짜 기대돼! 🌱")
+        else:
+            st.write("🎯 **[꿈을 향해 달리는 도전자]** 수많은 경쟁을 뚫고 세계 무대에 이름을 올린 멋진 전사야! 1점 1점을 위해 온 힘을 다해 뛰는 열정 가득한 선수지. 응원하자구! 🙌")
+    else:
+        st.warning("⚠️ 이 나라에는 등록된 선수가 없는 것 같아!")
+else:
+    st.info("💡 데이터를 불러오지 못했어. CSV 파일 위치를 꼭 확인해줘!")
