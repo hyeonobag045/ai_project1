@@ -6,9 +6,10 @@ st.set_page_config(page_title="배드민턴 랭킹 마스터 🏸", page_icon="�
 st.title("🏸 배드민턴 남자 단식 세계 랭킹 탐색기")
 st.write("세계적인 배드민턴 선수들의 정보를 한눈에 알아보자구! 😎")
 
-# 2. 데이터 불러오기 함수 (완벽 정렬 무적 패치! 📈)
-@st.cache_data
-def load_data():
+# 2. 데이터 불러오기 함수
+# ⭐ 중요: 캐시 이름(ttl이나 이름)을 살짝 틀어서 기존의 꼬인 캐시를 완전히 초기화함!
+@st.cache_data(ttl=60)
+def load_and_sort_badminton_data():
     players_by_country = {}
     
     try:
@@ -16,18 +17,26 @@ def load_data():
             reader = csv.DictReader(f)
             
             for row in reader:
-                # key나 value에 공백이 있으면 싹 지워주기
                 clean_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
                 
                 country = clean_row.get("country", "Unknown").strip()
-                ranking = clean_row.get("ranking", "9999").strip()
+                ranking_raw = clean_row.get("ranking", "9999").strip()
                 name = clean_row.get("player_name", clean_row.get("jorsey_name", "Unknown")).strip()
-                tournaments = clean_row.get("tournaments", "0").strip()
-                points = clean_row.get("points", "0").strip()
+                tournaments_raw = clean_row.get("tournaments", "0").strip()
+                points_raw = clean_row.get("points", "0").strip()
                 
                 if not country:
                     country = "Unknown"
-                    
+                
+                # 숫자만 깔끔하게 추출해서 '진짜 정수(int)'로 변환!
+                ranking_clean = "".join(filter(str.isdigit(), ranking_raw))
+                points_clean = "".join(filter(str.isdigit(), points_raw))
+                tournaments_clean = "".join(filter(str.isdigit(), tournaments_raw))
+                
+                ranking = int(ranking_clean) if ranking_clean else 9999
+                points = int(points_clean) if points_clean else 0
+                tournaments = int(tournaments_clean) if tournaments_clean else 0
+                
                 if country not in players_by_country:
                     players_by_country[country] = []
                     
@@ -38,17 +47,13 @@ def load_data():
                     "points": points
                 })
                 
-        # ⭐ 핵심 피드백 반영: 문자열이 아닌 '진짜 숫자'로 비교해서 1위부터 정렬하기!
+        # ⭐ 핵심 피드백 반영: 문자열이 아니라 '진짜 숫자 정수값' 기준으로 오름차순 정렬!!
+        # 이렇게 하면 11위, 13위가 104위, 107위보다 무조건 먼저 앞으로 오게 돼!
         for country in players_by_country:
-            players_by_country[country].sort(
-                key=lambda x: (
-                    int(x["ranking"]) if x["ranking"].isdigit() else 9999,      # 1순위: 랭킹 오름차순 (1위가 맨 위로!)
-                    -int(x["points"]) if x["points"].isdigit() else 0          # 2순위: 혹시 랭킹 같으면 포인트 내림차순
-                )
-            )
+            players_by_country[country].sort(key=lambda x: x["ranking"])
             
     except FileNotFoundError:
-        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 깃허브 저장소 루트에 잘 있는지 확인해줘.")
+        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 파일 위치를 다시 확인해줘.")
         return {}
     except Exception as e:
         st.warning(f"⚠️ 데이터를 읽는 중에 이슈가 있었어! (에러 내용: {e})")
@@ -56,7 +61,7 @@ def load_data():
     return players_by_country
 
 # 데이터 로드 실행!
-data = load_data()
+data = load_and_sort_badminton_data()
 
 # 3. 데이터가 정상적으로 있을 때만 화면 구성 🌍
 if data:
@@ -69,7 +74,7 @@ if data:
     st.subheader(f"🌍 {selected_country}의 전사들")
     country_players = data[selected_country]
     
-    # 이제 진짜 1위부터 순서대로 깔끔하게 정렬된 리스트가 나와! 👍
+    # 리스트 생성할 때 1위부터 순서대로 완벽하게 정렬되어 들어감! 📋
     player_options = [f"[{p['ranking']}위] {p['name']}" for p in country_players]
     
     if player_options:
@@ -85,23 +90,14 @@ if data:
         # 세련된 메트릭 레이아웃
         col1, col2, col3 = st.columns(3)
         col1.metric(label="현재 세계 랭킹 🥇", value=f"{player['ranking']} 위")
-        
-        try:
-            pts = f"{int(player['points']):,}"
-        except ValueError:
-            pts = player['points']
-            
-        col2.metric(label="총 랭킹 포인트 🔥", value=pts)
+        col2.metric(label="총 랭킹 포인트 🔥", value=f"{player['points']:,}")
         col3.metric(label="대회 출전 횟수 🏸", value=f"{player['tournaments']} 회")
         
         st.write("") # 한 줄 띄우기
         
         st.markdown("#### 🧠 **AI가 분석한 이 선수의 스펙 능력치**")
         
-        try:
-            rank_num = int(player["ranking"])
-        except ValueError:
-            rank_num = 9999
+        rank_num = player["ranking"]
             
         if rank_num == 1:
             st.success("👑 **[신계 영역]** 말해 뭐해? 현재 세계 배드민턴계를 씹어먹고 있는 절대 강자야! 적은 대회만 뛰고도 압도적인 포인트로 1위를 지키는 괴물 같은 효율성을 보여주고 있어. ㄷㄷ")
