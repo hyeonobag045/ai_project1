@@ -7,7 +7,7 @@ st.title("🏸 배드민턴 남자 단식 세계 랭킹 탐색기")
 st.write("세계적인 배드민턴 선수들의 정보를 한눈에 알아보자구! 😎")
 
 # 2. 데이터 불러오기 함수
-@st.cache_data(ttl=5) # 캐시가 절대 꼬이지 않도록 타임아웃 짧게 설정!
+@st.cache_data(ttl=1) # 캐시가 절대 방해하지 못하게 초기화 세팅!
 def load_clean_badminton_data():
     players_by_country = {}
     
@@ -16,7 +16,6 @@ def load_clean_badminton_data():
             reader = csv.DictReader(f)
             
             for row in reader:
-                # key나 value에 공백이 있으면 안전하게 싹 지워주기
                 clean_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
                 
                 country = clean_row.get("country", "Unknown").strip()
@@ -28,7 +27,7 @@ def load_clean_badminton_data():
                 if not country:
                     country = "Unknown"
                 
-                # ⭐ 오류 해결 핵심 포인트: 안전하게 숫자만 골라내기! (BOM이나 공백 박멸 🛠️)
+                # 숫자 외에 다른 공백문자 싹 다 박멸하기!
                 ranking_clean = "".join([c for c in ranking_raw if c.isdigit()])
                 points_clean = "".join([c for c in points_raw if c.isdigit()])
                 tournaments_clean = "".join([c for c in tournaments_raw if c.isdigit()])
@@ -48,29 +47,31 @@ def load_clean_badminton_data():
                 })
                 
     except FileNotFoundError:
-        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 파일 위치를 다시 확인해줘.")
+        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어!")
         return {}
     except Exception as e:
-        st.warning(f"⚠️ 데이터 읽기 오류가 살짝 있었어!: {e}")
+        st.warning(f"⚠️ 데이터 읽기 오류: {e}")
     
     return players_by_country
 
 data = load_clean_badminton_data()
 
-# 3. 화면 UI 구성 🌍
+# 3. 화면 UI 구성
 if data:
     countries = sorted(list(data.keys()))
     selected_country = st.selectbox("👉 궁금한 나라를 선택해봐!", countries)
     
-    st.divider() # 깔끔한 구분선
+    st.divider()
     
     st.subheader(f"🌍 {selected_country}의 전사들")
     
-    # 💥 선택된 나라의 선수 목록을 가져온 뒤, 화면에 뿌리기 직전에 '진짜 숫자 크기' 기준으로 강제 정렬!
+    # 💥 [해결의 열쇠] 선택된 나라의 선수 목록을 가져온 뒤, '진짜 정수 숫자' 크기 기준으로 오름차순 정렬!
     country_players = data[selected_country]
     country_players.sort(key=lambda x: x["ranking"])
     
-    # 👑 숫자가 작은 순서(1위, 2위, 11위...)대로 셀렉트박스에 안전하게 투하!
+    # ⭐ [절대 정렬이 깨지지 않는 치트키] ⭐
+    # 스트림릿 셀렉트박스에 '텍스트 글자' 대신 '완벽히 정렬된 딕셔너리 리스트'를 그대로 꽂아버려!
+    # format_func를 이용하면 화면에 보여줄 때만 글자로 변환하므로, 파이썬 정렬 순서가 1밀리초도 안 깨져!
     selected_player = st.selectbox(
         "👤 능력을 분석할 선수를 골라봐!",
         options=country_players,
