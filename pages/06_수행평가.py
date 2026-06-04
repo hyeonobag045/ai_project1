@@ -7,7 +7,7 @@ st.title("🏸 배드민턴 남자 단식 세계 랭킹 탐색기")
 st.write("세계적인 배드민턴 선수들의 정보를 한눈에 알아보자구! 😎")
 
 # 2. 데이터 불러오기 함수
-@st.cache_data(ttl=5)  # 캐시가 절대로 방해하지 못하도록 초단기 설정!
+@st.cache_data(ttl=5) # 캐시가 절대 꼬이지 않도록 타임아웃 짧게 설정!
 def load_clean_badminton_data():
     players_by_country = {}
     
@@ -16,6 +16,7 @@ def load_clean_badminton_data():
             reader = csv.DictReader(f)
             
             for row in reader:
+                # key나 value에 공백이 있으면 안전하게 싹 지워주기
                 clean_row = {k.strip(): v.strip() for k, v in row.items() if k is not None}
                 
                 country = clean_row.get("country", "Unknown").strip()
@@ -27,10 +28,10 @@ def load_clean_badminton_data():
                 if not country:
                     country = "Unknown"
                 
-                # 숫자 외에 다른 공백문자 싹 다 박멸하기!
-                ranking_clean = "".join(filter(str.isdigit(), ranking_raw))
-                points_clean = "".join(filter(str.isdigit(), points_raw))
-                tournaments_clean = "".join(filter(str.isdigit(), tournaments_raw))
+                # ⭐ 오류 해결 핵심 포인트: 안전하게 숫자만 골라내기! (BOM이나 공백 박멸 🛠️)
+                ranking_clean = "".join([c for c in ranking_raw if c.isdigit()])
+                points_clean = "".join([c for c in points_raw if c.isdigit()])
+                tournaments_clean = "".join([c for c in tournaments_raw if c.isdigit()])
                 
                 ranking = int(ranking_clean) if ranking_clean else 9999
                 points = int(points_clean) if points_clean else 0
@@ -47,29 +48,29 @@ def load_clean_badminton_data():
                 })
                 
     except FileNotFoundError:
-        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어!")
+        st.error("🚨 `men_single.csv` 파일을 찾을 수 없어! 파일 위치를 다시 확인해줘.")
         return {}
     except Exception as e:
-        st.warning(f"⚠️ 데이터 읽기 오류: {e}")
+        st.warning(f"⚠️ 데이터 읽기 오류가 살짝 있었어!: {e}")
     
     return players_by_country
 
 data = load_clean_badminton_data()
 
-# 3. 화면 UI 구성
+# 3. 화면 UI 구성 🌍
 if data:
     countries = sorted(list(data.keys()))
     selected_country = st.selectbox("👉 궁금한 나라를 선택해봐!", countries)
     
-    st.divider()
+    st.divider() # 깔끔한 구분선
     
     st.subheader(f"🌍 {selected_country}의 전사들")
     
-    # 💥 [해결의 열쇠] 선택된 나라의 선수 목록을 가져온 뒤, 화면에 뿌리기 직전에 진짜 정수형 ranking 기준으로 강제 정렬!
+    # 💥 선택된 나라의 선수 목록을 가져온 뒤, 화면에 뿌리기 직전에 '진짜 숫자 크기' 기준으로 강제 정렬!
     country_players = data[selected_country]
     country_players.sort(key=lambda x: x["ranking"])
     
-    # 정렬이 완벽히 끝난 상태에서 객체 리스트를 셀렉트박스에 투하!
+    # 👑 숫자가 작은 순서(1위, 2위, 11위...)대로 셀렉트박스에 안전하게 투하!
     selected_player = st.selectbox(
         "👤 능력을 분석할 선수를 골라봐!",
         options=country_players,
