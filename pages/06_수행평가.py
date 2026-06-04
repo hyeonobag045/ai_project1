@@ -7,8 +7,8 @@ st.title("🏸 배드민턴 남자 단식 세계 랭킹 탐색기")
 st.write("세계적인 배드민턴 선수들의 정보를 한눈에 알아보자구! 😎")
 
 # 2. 데이터 불러오기 함수
-@st.cache_data(ttl=10)  # 캐시 엉킴 방지를 위해 짧게 설정!
-def load_clean_data():
+@st.cache_data(ttl=5)  # 캐시가 절대로 방해하지 못하도록 초단기 설정!
+def load_clean_badminton_data():
     players_by_country = {}
     
     try:
@@ -27,7 +27,7 @@ def load_clean_data():
                 if not country:
                     country = "Unknown"
                 
-                # 숫자만 강제 추출
+                # 숫자 외에 다른 공백문자 싹 다 박멸하기!
                 ranking_clean = "".join(filter(str.isdigit(), ranking_raw))
                 points_clean = "".join(filter(str.isdigit(), points_raw))
                 tournaments_clean = "".join(filter(str.isdigit(), tournaments_raw))
@@ -46,10 +46,6 @@ def load_clean_data():
                     "points": points
                 })
                 
-        # 👑 나라별 선수들을 진짜 '정수 숫자' 순서대로 칼정렬!
-        for country in players_by_country:
-            players_by_country[country].sort(key=lambda x: x["ranking"])
-            
     except FileNotFoundError:
         st.error("🚨 `men_single.csv` 파일을 찾을 수 없어!")
         return {}
@@ -58,7 +54,7 @@ def load_clean_data():
     
     return players_by_country
 
-data = load_clean_data()
+data = load_clean_badminton_data()
 
 # 3. 화면 UI 구성
 if data:
@@ -68,11 +64,12 @@ if data:
     st.divider()
     
     st.subheader(f"🌍 {selected_country}의 전사들")
-    country_players = data[selected_country]
     
-    # ⭐ [치명적 치트키 해결법] ⭐
-    # 스트림릿이 글자순으로 지멋대로 정렬하지 못하도록 객체 리스트 자체를 셀렉트박스에 던져버리기!
-    # format_func를 쓰면 화면에는 이쁘게 문자열로 보이면서도, 순서는 우리가 정렬한 숫자 순서가 절대 깨지지 않아!
+    # 💥 [해결의 열쇠] 선택된 나라의 선수 목록을 가져온 뒤, 화면에 뿌리기 직전에 진짜 정수형 ranking 기준으로 강제 정렬!
+    country_players = data[selected_country]
+    country_players.sort(key=lambda x: x["ranking"])
+    
+    # 정렬이 완벽히 끝난 상태에서 객체 리스트를 셀렉트박스에 투하!
     selected_player = st.selectbox(
         "👤 능력을 분석할 선수를 골라봐!",
         options=country_players,
