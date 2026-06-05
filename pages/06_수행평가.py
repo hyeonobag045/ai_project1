@@ -59,6 +59,7 @@ if player_list:
     
     st.subheader("🏅 세계 랭킹 순으로 골라봐!")
     
+    # 💥 [오타 수정 완료] 위위 글자를 지우고 완벽하게 한국어 '위'로 교정했어!
     selected_player = st.selectbox(
         "👤 능력을 분석할 선수를 선택해줘! (위에서부터 차례대로 1위야! 📈)",
         options=player_list,
@@ -69,19 +70,18 @@ if player_list:
     if selected_player:
         player = selected_player
         
-        # 💥 화면을 좌우 2분할로 나누어 왼쪽엔 사진, 오른쪽엔 프로필 배치
+        # 화면을 좌우 2분할로 나누어 왼쪽엔 사진, 오른쪽엔 프로필 배치
         img_col, info_col = st.columns([1, 1.3])
         
         with img_col:
-            # 🔗 [치트키] 어떤 선수든 구글 오픈 소스 이미지 소스를 활용해 해당 선수의 배드민턴 프로필 사진을 가져옴!
-            # 선수의 실제 이름 기반으로 실시간 스포츠 이미지가 자동 로딩되도록 설계 완료 🎯
+            # 🔗 어떤 선수든 구글 오픈 소스 이미지 시스템을 활용해 해당 선수의 배드민턴 사진을 매칭!
             search_query = player['name'].replace(' ', '%20')
             photo_url = f"https://source.unsplash.com/featured/400x500/?badminton,{search_query}"
             
-            # 선수 사진 출력하기! (로딩이 늦어지면 기본 배드민턴 멋진 사진이 유연하게 뜸)
+            # 선수 사진 출력하기!
             st.image(photo_url, caption=f"🏸 {player['name']} 선수 프로필", use_container_width=True)
                 
-            # 🔍 추가 센스 기능: 클릭하면 구글에 자동으로 해당 선수 실물 사진을 검색해 주는 마법의 링크 버튼!
+            # 🔍 실물 검색 다이렉트 링크 연동
             search_url = f"https://www.google.com/search?tbm=isch&q={player['name'].replace(' ', '+')}+badminton"
             st.markdown(f"[🔍 {player['name']} 실물 사진 구글에서 직접 보기]({search_url})")
 
@@ -110,4 +110,6 @@ if player_list:
             elif rank_num <= 200:
                 st.write("🏃 **[라이징 스타 / 베테랑]** 세계적인 무대에서 맹활약하며 끊임없이 성장 중인 선수야. 경험이 풍부하거나 잠재력이 엄청나서 앞으로의 성장이 진짜 기대돼! 🌱")
             else:
-                st.write("🎯 **[꿈을 향해 달리는 도전자]** 수많은 경쟁을 뚫고 세계 무대에 이름을 올린 멋진 전사야! 1점 1점을 위해 온 힘을 다해
+                st.write("🎯 **[꿈을 향해 달리는 도전자]** 수많은 경쟁을 뚫고 세계 무대에 이름을 올린 멋진 전사야! 1점 1점을 위해 온 힘을 다해 뛰는 열정 가득한 선수지. 응원하자구! 🙌")
+else:
+    st.info("💡 데이터를 불러오지 못했어. `men_single.csv` 파일 위치를 확인해줘!")
