@@ -1,5 +1,6 @@
 import streamlit as st
 import csv
+import os
 
 # 1. 페이지 기본 설정 및 타이틀
 st.set_page_config(page_title="배드민턴 랭킹 마스터", page_icon="🏸", layout="centered")
@@ -66,25 +67,23 @@ if player_list:
         with img_col:
             p_name = player['name'].lower()
             
-            # 선수별 실제 공식 프로필 및 매치 사진 링크 매칭
-            if "axelsen" in p_name:
-                photo_url = "https://images.olympics.com/images/image/private/t_16-9_760/f_auto/primary/p8099aswipon2f6p7ehi"
-            elif "ginting" in p_name:
-                photo_url = "https://images.bwfbadminton.com/players/headshot/75336.png"
-            elif "jonatan" in p_name or "christie" in p_name:
-                photo_url = "https://images.bwfbadminton.com/players/headshot/81816.png"
-            elif "kodai" in p_name or "naraoka" in p_name:
-                photo_url = "https://images.bwfbadminton.com/players/headshot/83274.png"
-            elif "shifeng" in p_name or "li shi feng" in p_name:
-                photo_url = "https://images.bwfbadminton.com/players/headshot/93855.png"
-            elif "kunlavut" in p_name or "vitidsarn" in p_name:
-                photo_url = "https://images.bwfbadminton.com/players/headshot/94174.png"
-            elif "lee zi" in p_name or "zi jia" in p_name:
-                photo_url = "https://images.bwfbadminton.com/players/headshot/73434.png"
+            # ⭐ [핵심 패치] 인터넷 링크가 아닌, 깃허브 폴더에 같이 올린 파일이 있는지 체크하고 직접 띄우기!
+            if "axelsen" in p_name and os.path.exists("axelsen.jpg"):
+                st.image("axelsen.jpg", caption=f"{player['name']} 선수 실물", use_container_width=True)
+            elif "ginting" in p_name and os.path.exists("ginting.jpg"):
+                st.image("ginting.jpg", caption=f"{player['name']} 선수 실물", use_container_width=True)
+            elif ("jonatan" in p_name or "christie" in p_name) and os.path.exists("christie.jpg"):
+                st.image("christie.jpg", caption=f"{player['name']} 선수 실물", use_container_width=True)
+            elif os.path.exists("default.jpg"):
+                # 준비한 기본 배드민턴 이미지가 있을 때
+                st.image("default.jpg", caption="배드민턴 월드 클래스", use_container_width=True)
             else:
-                photo_url = "https://images.unsplash.com/photo-1613918108466-292b78a8ef95?w=500"
+                # 만약 아무 사진 파일도 안 올렸을 때 긴급 방어용 텍스트 메시지 표시
+                st.info("📸 사진 파일을 프로젝트 폴더에 올려주면 여기에 바로 나타나요!")
             
-            st.image(photo_url, caption=f"{player['name']} 선수 프로필", use_container_width=True)
+            # 구글 이미지 탭으로 바로 이동하는 링크는 보너스로 유지!
+            search_url = f"https://www.google.com/search?tbm=isch&q={player['name'].replace(' ', '+')}+badminton"
+            st.markdown(f"[🔍 구글에서 실물 사진 직접 보기]({search_url})")
 
         with info_col:
             st.markdown(f"### ⚡ **{player['name']}** 선수의 시크릿 프로필")
@@ -100,7 +99,7 @@ if player_list:
             
             rank_num = player["ranking"]
             if rank_num == 1:
-                st.success("👑 **[신계 영역]** 말해 뭐해? 현재 세계 배드민턴계를 완전히 씹어먹고 있는 절대 강자야! 적은 대회만 뛰고도 압도적인 포인트로 1위를 지키는 괴물 같은 효율성을 보여주고 있어. ㄷㄷ")
+                st.success("👑 **[신계 영역]** 현재 세계 배드민턴계를 완전히 씹어먹고 있는 절대 강자야! 적은 대회만 뛰고도 압도적인 포인트로 1위를 지키는 괴물 같은 효율성을 보여주고 있어. ㄷㄷ")
             elif rank_num <= 10:
                 st.info("💎 **[월드클래스]** 전 세계 탑 10에 드는 초엘리트 선수! 코트 위에서 이 선수를 만나면 숨도 쉬기 힘들 걸? 대회마다 우승 후보로 꼽히는 엄청난 실력자야! 🚀")
             elif rank_num <= 50:
